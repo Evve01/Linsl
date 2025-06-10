@@ -9,7 +9,7 @@ mod evaluation;
 
 use evaluation::evaluate;
 use parsing::{parse, tokenize};
-use primitives::{add, neg};
+use primitives::{add, inv, mul, neg};
 
 type Num = f64;
 
@@ -71,7 +71,9 @@ impl LinslEnv {
         let mut env = HashMap::new();
 
         env.insert("+".to_string(), LinslExpr::Primitive(add));
-        env.insert("-".to_string(), LinslExpr::Primitive(neg));
+        env.insert("neg".to_string(), LinslExpr::Primitive(neg));
+        env.insert("*".to_string(), LinslExpr::Primitive(mul));
+        env.insert("inv".to_string(), LinslExpr::Primitive(inv));
         LinslEnv { env }
     }
 }
