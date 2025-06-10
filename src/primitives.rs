@@ -25,6 +25,7 @@ pub fn mul(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
     Ok(LinslExpr::Number(mul))
 }
 
+/// Compute the multiplicative inverse of a (numeric) argument.
 pub fn inv(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
     let mut num: Num = 1 as Num;
 
