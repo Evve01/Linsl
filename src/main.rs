@@ -1,3 +1,5 @@
+//! A simple interpreter for a lisp/scheme like language
+
 use core::fmt;
 use std::{collections::HashMap, io::{self, Write}, rc::Rc};
 
@@ -11,12 +13,17 @@ use primitives::{add, neg};
 
 type Num = f64;
 
+/// The basic unit of code in the language. Any valid piece of Linsl code is an expression.
 #[derive(Debug, Clone)]
 enum LinslExpr {
     Bool(bool),
+    /// A lambda function, in the spirit of lambda calculus.
     Closure(Rc<LinslExpr>, Rc<LinslExpr>),
     List(Vec<LinslExpr>),
     Number(Num),
+    /// A built in transformation of expressions. These have deliberately been kept as few as
+    /// possible; there are just enough of them to allow other functions that are desirable to be
+    /// defined in Linsl.
     Primitive(fn(&[LinslExpr]) -> Result<LinslExpr, LinslErr>),
     Symbol(String),
 }
@@ -24,24 +31,25 @@ enum LinslExpr {
 impl fmt::Display for LinslExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let str = match self {
-            LinslExpr::Bool(b) => if *b {"#t".to_string()} else {"#f".to_string()}
-            LinslExpr::Closure(params, body) => format!("(lambda {}, {})", params, body),
-            LinslExpr::Primitive(_) => "Primitive {}".to_string(),
-            LinslExpr::List(xs) => {
+            LinslExpr::Bool(b)          => if *b {"#t".to_string()} else {"#f".to_string()}
+            LinslExpr::Closure(ps, bd)  => format!("(lambda {}, {})", ps, bd),
+            LinslExpr::Primitive(_)     => "Primitive {}".to_string(),
+            LinslExpr::List(xs)         => {
                 let strs : Vec<String> = xs
                     .iter()
                     .map(|x| x.to_string())
                     .collect();
                 format!("({})", strs.join(" "))
             }
-            LinslExpr::Number(v) => v.to_string(),
-            LinslExpr::Symbol(s) => s.clone(),
+            LinslExpr::Number(v)        => v.to_string(),
+            LinslExpr::Symbol(s)        => s.clone(),
         };
 
         write!(f, "{}", str)
     }
 }
 
+/// Errors that can be encountered when parsing or evaluating code.
 #[derive(Debug)]
 enum LinslErr {
     InternalError(String),
@@ -51,12 +59,14 @@ enum LinslErr {
     UnbalancedParens(u32, u32),
 }
 
+/// The current bindings between symbol names and code.
 #[derive(Debug, Clone)]
 struct LinslEnv {
     env: HashMap<String, LinslExpr>,
 }
 
 impl LinslEnv {
+    /// The environment when starting the interpreter, i.e. holding only the primitives.
     fn default() -> LinslEnv {
         let mut env = HashMap::new();
 
