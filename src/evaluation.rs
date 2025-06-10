@@ -2,7 +2,7 @@ use crate::{LinslEnv, LinslErr, LinslExpr};
 
 pub fn evaluate(expr: &LinslExpr, env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
     match expr {
-        LinslExpr::Bool(_) => todo!(),
+        LinslExpr::Bool(b) => Ok(LinslExpr::Bool(*b)),
         LinslExpr::Closure(_linsl_expr, _linsl_expr1) => todo!(),
         LinslExpr::List(exprs) => evaluate_list(exprs, env),
         LinslExpr::Number(_) => Ok(expr.clone()),

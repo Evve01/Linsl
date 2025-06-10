@@ -49,10 +49,16 @@ fn read_list(tokens: &[(String, (u32, u32))]) -> Result<InterParse, LinslErr> {
 }
 
 fn parse_atom(atom : &(String, (u32, u32))) -> LinslExpr {
-    let attempted_num : Result<Num, _> = atom.0.parse();
-    match attempted_num {
-        Ok(v) => LinslExpr::Number(v),
-        Err(_) => LinslExpr::Symbol(atom.0.clone())
+    match atom.0.as_ref() {
+        "#t" => LinslExpr::Bool(true),
+        "#f" => LinslExpr::Bool(false),
+        _ => {
+            let attempted_num : Result<Num, _> = atom.0.parse();
+            match attempted_num {
+                Ok(v) => LinslExpr::Number(v),
+                Err(_) => LinslExpr::Symbol(atom.0.clone())
+            }
+        }
     }
 }
 
