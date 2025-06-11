@@ -61,20 +61,24 @@ enum LinslErr {
 
 /// The current bindings between symbol names and code.
 #[derive(Debug, Clone)]
-struct LinslEnv {
-    env: HashMap<String, LinslExpr>,
+struct LinslEnv<'a> {
+    inner: HashMap<String, LinslExpr>,
+    outer: Option<&'a LinslEnv<'a>>,
 }
 
-impl LinslEnv {
+impl LinslEnv<'_> {
     /// The environment when starting the interpreter, i.e. holding only the primitives.
-    fn default() -> LinslEnv {
+    fn default<'a>() -> LinslEnv<'a> {
         let mut env = HashMap::new();
 
         env.insert("+".to_string(), LinslExpr::Primitive(add));
         env.insert("neg".to_string(), LinslExpr::Primitive(neg));
         env.insert("*".to_string(), LinslExpr::Primitive(mul));
         env.insert("inv".to_string(), LinslExpr::Primitive(inv));
-        LinslEnv { env }
+        LinslEnv { 
+            inner: env,
+            outer: None,
+        }
     }
 }
 
