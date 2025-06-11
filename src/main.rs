@@ -9,7 +9,7 @@ mod evaluation;
 
 use evaluation::evaluate;
 use parsing::{parse, tokenize};
-use primitives::{add, inv, mul, neg};
+use primitives::{add, eq, gr, inv, mul, neg};
 
 type Num = f64;
 
@@ -33,7 +33,7 @@ impl fmt::Display for LinslExpr {
         let str = match self {
             LinslExpr::Bool(b)          => if *b {"#t".to_string()} else {"#f".to_string()}
             LinslExpr::Closure(ps, bd)  => format!("(lambda {}, {})", ps, bd),
-            LinslExpr::Primitive(_)     => "Primitive {}".to_string(),
+            LinslExpr::Primitive(_)     => "Primitive operator".to_string(),
             LinslExpr::List(xs)         => {
                 let strs : Vec<String> = xs
                     .iter()
@@ -59,6 +59,20 @@ enum LinslErr {
     UnbalancedParens(u32, u32),
 }
 
+impl fmt::Display for LinslErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            LinslErr::InternalError(s) => s.clone(),
+            LinslErr::ListError(s) => s.clone(),
+            LinslErr::PrimitivesError(s) => s.clone(),
+            LinslErr::SyntaxError(v1, v2) => format!("Syntax error at ({}, {})", v1, v2),
+            LinslErr::UnbalancedParens(v1, v2) => format!("Unbalanced Parenthesis at ({}, {})", v1, v2),
+        };
+
+        write!(f, "{}", str)
+    }
+}
+
 /// The current bindings between symbol names and code.
 #[derive(Debug, Clone)]
 struct LinslEnv<'a> {
@@ -75,6 +89,8 @@ impl LinslEnv<'_> {
         env.insert("neg".to_string(), LinslExpr::Primitive(neg));
         env.insert("*".to_string(), LinslExpr::Primitive(mul));
         env.insert("inv".to_string(), LinslExpr::Primitive(inv));
+        env.insert("=".to_string(), LinslExpr::Primitive(eq));
+        env.insert(">".to_string(), LinslExpr::Primitive(gr));
         LinslEnv { 
             inner: env,
             outer: None,
@@ -98,7 +114,7 @@ fn main() {
         io::stdin().read_line(&mut expr).expect("Failed to read line");
         match parse_eval(expr, env) {
             Ok(res) => println!("{}", res),
-            Err(e) => println!("{:?}", e),
+            Err(e) => println!("{}", e),
         }
     }
     
