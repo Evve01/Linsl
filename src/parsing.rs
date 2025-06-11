@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{LinslExpr, LinslErr, Num};
 
 type TokensWithLoc = Vec<(String, (u32, u32))>;
@@ -73,4 +75,27 @@ pub fn parse_list_of_nums(nums: &[LinslExpr]) -> Result<Vec<Num>, LinslErr>{
     nums.iter()
         .map(parse_num)
         .collect::<Result<Vec<Num>, LinslErr>>()
+}
+
+pub fn parse_list_of_symbols(symbs: Rc<LinslExpr>) -> Result<Vec<String>, LinslErr> {
+    let list = match symbs.as_ref() {
+        LinslExpr::List(s) => Ok(s.clone()),
+        _ => Err(LinslErr::PrimitivesError(
+                format!("Expected list of symbols, found \'{}\'", symbs)
+            )
+        ),
+    }?;
+
+    list.iter().map(
+        |x| {
+            match x {
+                LinslExpr::Symbol(s) => Ok(s.clone()),
+                _ => Err(
+                    LinslErr::PrimitivesError(
+                        format!("Expected symbol, found \'{}\'", x)
+                    )
+                ),
+            }
+        }
+    ).collect()
 }
