@@ -14,7 +14,7 @@ fn env_get(s: &str, env: &LinslEnv) -> Option<LinslExpr> {
     }
 }
 
-pub fn evaluate(expr: &LinslExpr, env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
+pub fn evaluate(expr: &[(LinslExpr, u32)], env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
     match expr {
         LinslExpr::Bool(_) => Ok(expr.clone()),
         LinslExpr::Closure(_, _) => Err(LinslErr::SyntaxError(0, 0)),
