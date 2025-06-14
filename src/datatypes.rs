@@ -1,14 +1,19 @@
+//! The datatypes used throughout the code base.
+
 use std::{collections::HashMap, fmt, rc::Rc};
 
 use crate::primitives::{add, eq, gr, inv, mul, neg};
 
 pub type Num = f64;
 pub type PosNum = usize;
+/// Positions of expressions are tracked and used only to specify where a syntax error has
+/// occurred.
 pub type Pos = Vec<PosNum>;
 
 /// The basic unit of code in the language. Any valid piece of Linsl code is an expression.
 #[derive(Debug, Clone)]
 pub enum LinslExpr {
+    /// One of '#t' or '#f'.
     Bool(bool),
     /// A lambda function, in the spirit of lambda calculus.
     Closure(Rc<LinslExpr>, Rc<LinslExpr>),
@@ -45,9 +50,11 @@ impl fmt::Display for LinslExpr {
 /// Errors that can be encountered when parsing or evaluating code.
 #[derive(Debug)]
 pub enum LinslErr {
+    /// Any kind of error not caused by the code, but rather by the interpreter. Should never
+    /// occur.
     InternalError(String),
     SyntaxError(String, Pos),
-    /// Created if the number of opening parens is not the same as closing parens.
+    /// Created if the number of opening parentheses is not the same as closing parentheses.
     /// Returns (number of '(', number of ')')
     UnbalancedParens(PosNum, PosNum),
 }
@@ -72,10 +79,13 @@ impl fmt::Display for LinslErr {
     }
 }
 
-/// The current bindings between symbol names and code.
+/// The bindings between symbol names and code. The inner scope is the local scope, enabling scoped
+/// variables. This enables closures.
 #[derive(Debug, Clone)]
 pub struct LinslEnv<'a> {
+    /// The current local scope.
     pub inner: HashMap<String, LinslExpr>,
+    /// The immediate outer scope. Every scope except the global one has an outer scope.
     pub outer: Option<&'a LinslEnv<'a>>,
 }
 

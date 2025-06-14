@@ -82,7 +82,7 @@ pub fn gr(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
     if exprs.len() != 2 {
         return Err(
             LinslErr::InternalError(
-                format!("Expected two numbers two compare, got \'{}\'", exprs.len())
+                format!("Expected two numbers two compare, got {}", exprs.len())
             )
         )
     };

@@ -1,7 +1,12 @@
+//! Code for evaluating Linsl expressions.
+
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{datatypes::{LinslEnv, LinslErr, LinslExpr, PosNum}, parsing::{handle_result, parse_list_of_symbols}};
 
+/// Recursive function for finding the value for a symbol. Begins looking in the innermost scope,
+/// and looks in the outer scopes only if no match is found. If no match is found anywhere, returns
+/// None.
 fn env_get(s: &str, env: &LinslEnv) -> Option<LinslExpr> {
     match env.inner.get(s) {
         Some(expr) => Some(expr.clone()),
@@ -14,6 +19,7 @@ fn env_get(s: &str, env: &LinslEnv) -> Option<LinslExpr> {
     }
 }
 
+/// The entry point for evaluating a Linsl program (since every program is an expression).
 pub fn evaluate(
     expr: &LinslExpr, 
     pos: PosNum, 
@@ -32,6 +38,8 @@ pub fn evaluate(
                 )
             )
         ,
+        // None of the other types of expressions are valid as the top level element, which is why
+        // they cause an error.
         _ => Err(
             LinslErr::SyntaxError(
                 format!("Expected list or atom, found \'{}\'", expr), 
@@ -58,6 +66,9 @@ fn evaluate_built_in_form(
     }
 }
 
+/// Evaluation for the primitive "define". It adds a new binding to the inner scope, without
+/// evaluating it. In other words, the expression bound to a variable is not evaluated when
+/// creating the binding, only when using it.
 fn evaluate_define(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
     if exprs.len() != 2 {
         return Err(
@@ -95,6 +106,10 @@ fn evaluate_forms(forms: &[LinslExpr], env: &mut LinslEnv) -> Result<Vec<LinslEx
         .collect()
 }
 
+/// Evaluation of the primitive "if". It evaluates the first expression passed expecting a boolean b.
+/// Then: 
+/// - if b it evaluates the first expression after the test expression.
+/// - if !b it evaluates the second expression after the test expression.
 fn evaluate_if(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
     if exprs.len() != 3 {
         return Err(
@@ -127,6 +142,7 @@ fn evaluate_if(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, Lin
     }
 }
 
+/// Evaluation of the primitive "lambda" used to create a closure.
 fn evaluate_lambda(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
     if expr.len() != 2 {
         return Err(
