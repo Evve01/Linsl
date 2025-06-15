@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::datatypes::{LinslErr, LinslExpr, Num, PosNum};
 
 type InterParse = (LinslExpr, Vec<String>);
@@ -137,8 +135,8 @@ pub fn parse_list_of_nums(nums: &[LinslExpr], start_index: PosNum) -> Result<Vec
         .collect::<Result<Vec<Num>, LinslErr>>()
 }
 
-pub fn parse_list_of_symbols(symbs: Rc<LinslExpr>) -> Result<Vec<String>, LinslErr> {
-    let list = match symbs.as_ref() {
+pub fn parse_list_of_symbols(symbs: &LinslExpr) -> Result<Vec<String>, LinslErr> {
+    let list = match symbs {
         LinslExpr::List(s) => Ok(s.clone()),
         _ => Err(
             LinslErr::SyntaxError(

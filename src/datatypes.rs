@@ -1,6 +1,6 @@
 //! The datatypes used throughout the code base.
 
-use std::{collections::HashMap, fmt, rc::Rc};
+use std::{collections::HashMap, fmt};
 
 use crate::primitives::{add, car, cdr, eq, gr, inv, mul, neg};
 
@@ -16,7 +16,7 @@ pub enum LinslExpr {
     /// One of '#t' or '#f'.
     Bool(bool),
     /// A lambda function, in the spirit of lambda calculus.
-    Closure(Rc<LinslExpr>, Rc<LinslExpr>),
+    Closure(Box<LinslExpr>, Box<LinslExpr>),
     List(Vec<LinslExpr>),
     Number(Num),
     /// A built in transformation of expressions. These have deliberately been kept as few as

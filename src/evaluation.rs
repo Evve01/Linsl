@@ -1,6 +1,6 @@
 //! Code for evaluating Linsl expressions.
 
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap};
 
 use crate::{datatypes::{LinslEnv, LinslErr, LinslExpr, PosNum}, parsing::{handle_result, parse_list_of_symbols}};
 
@@ -115,7 +115,8 @@ fn evaluate_forms(forms: &[LinslExpr], env: &mut LinslEnv) -> Result<Vec<LinslEx
         .collect()
 }
 
-/// Evaluation of the primitive "if". It evaluates the first expression passed expecting a boolean b.
+/// Evaluation of the primitive "if". It evaluates the first expression passed expecting a boolean
+/// b.
 /// Then: 
 /// - if b it evaluates the first expression after the test expression.
 /// - if !b it evaluates the second expression after the test expression.
@@ -172,8 +173,8 @@ fn evaluate_lambda(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
 
     Ok(
         LinslExpr::Closure(
-            Rc::new(params_form.clone()), 
-            Rc::new(body_form.clone()),
+            Box::new(params_form.clone()), 
+            Box::new(body_form.clone()),
         )
     )
 }
@@ -195,7 +196,7 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, L
             let primitive = evaluate(head, 0, env)?;
             match primitive {
                 LinslExpr::Closure(param, body) => {
-                    let lambda_env = &mut handle_result(local_env(param, param_forms, env), 1)?;
+                    let lambda_env = &mut handle_result(local_env(&param, param_forms, env), 1)?;
                     evaluate(&body, 2, lambda_env)
                 },
                 LinslExpr::Primitive(f) => {
@@ -218,7 +219,7 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, L
 }
 
 fn local_env<'a>(
-    new_names: Rc<LinslExpr>,
+    new_names: &LinslExpr,
     vals: &[LinslExpr],
     outer_env: &'a mut LinslEnv
 ) -> Result<LinslEnv<'a>, LinslErr> {
