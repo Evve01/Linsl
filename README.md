@@ -1,7 +1,7 @@
 # Linsl
 
 Linsl &ndash; Linsl is not Scheme or Lisp &ndash; is a *very* simple Lisp/Scheme like
-language. It is currently technically functional and (should be) turing
+language. It is currently technically functional and (should be) Turing
 complete, although far from complete (or even really pleasant to use).
 
 ## Usage
