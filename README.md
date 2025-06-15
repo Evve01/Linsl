@@ -1,6 +1,6 @@
 # Linsl
 
-Linsl -- Linsl is not Scheme or Lisp -- is a *very* simple Lisp/Scheme like
+Linsl &ndash; Linsl is not Scheme or Lisp &ndash; is a *very* simple Lisp/Scheme like
 language. It is currently technically functional and (should be) turing
 complete, although far from complete (or even really pleasant to use).
 
@@ -82,6 +82,15 @@ and only two expressions of the same type; in other words, the expression `(=
 `>` takes two numbers `a` and `b`, and returns `#t` if `a` is greater than `b`
 and `#f` otherwise.
 
+#### The `car`-primitive
+
+`car` takes a list, and returns its head. If given an empty list, it returns
+the empty list.
+
+#### The `cdr`-primitive
+
+`cdr` takes a list, and returns its tail. If given an empty list, it returns
+the empty list.
 
 ### Special Forms
 
@@ -101,7 +110,7 @@ expression.
 Then, if b is true it evaluates the second form, otherwise it evaluates the
 third form.
 
-#### the `lambda` Special Form
+#### The `lambda` Special Form
 
 `lambda` takes two expressions, the first of which must be a list of symbols.
 The second can be any expression, and can use the symbols listed in the first
@@ -111,6 +120,11 @@ Essentially, the `lambda` special form allows you to create parameterized
 expressions. If a `lambda` form is combined with a `define` form, a name can be
 given to this parameterized expression, and it can then be used as the head of
 a list, just as any of the primitives.
+
+#### The `quote` Special Form
+
+`quote` takes one expression, and returns it without evaluation. This can be
+used to, for example, create lists; `(quote (1 2))` evaluates to `(1 2)`.
 
 # Acknowledgements
 

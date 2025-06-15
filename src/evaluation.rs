@@ -60,6 +60,15 @@ fn evaluate_built_in_form(
                 "define" => Some(evaluate_define(param_forms, env)),
                 "if" => Some(evaluate_if(param_forms, env)),
                 "lambda" => Some(evaluate_lambda(param_forms)),
+                "quote" => match param_forms.first() {
+                    Some(e) => Some(Ok(e.clone())),
+                    None => Some(
+                        Err(LinslErr::SyntaxError(
+                            "Found no expression to quote.".to_string(), 
+                            vec![0])
+                        )
+                    ),
+                }
                 _ => None
             },
             _ => None,

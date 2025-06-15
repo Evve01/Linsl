@@ -99,3 +99,48 @@ pub fn gr(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
 
     Ok(LinslExpr::Bool(res))
 }
+
+pub fn car(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+    if expr.len() != 1 {
+        return Err(
+            LinslErr::SyntaxError(
+                format!("Expected 1 argument, found {}", expr.len()), 
+                vec![1])
+        );
+    };
+
+    match &expr[0] {
+        LinslExpr::List(linsl_exprs) => match linsl_exprs.first() {
+            Some(e) => Ok(e.clone()),
+            None => Ok(LinslExpr::List(Vec::new())),
+        }
+        _ => Err(LinslErr::SyntaxError(
+                "Can only find car of lists".to_string(), 
+                vec![1]))
+    }
+}
+
+pub fn cdr(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+    if expr.len() != 1 {
+        return Err(
+            LinslErr::SyntaxError(
+                format!("Expected 1 argument, found {}", expr.len()), 
+                vec![1])
+        );
+    };
+
+    match &expr[0] {
+        LinslExpr::List(linsl_exprs) => {
+            match linsl_exprs.clone().split_first() {
+                Some((_, tail)) => Ok(LinslExpr::List(tail.to_vec())),
+                None => Ok(LinslExpr::List(Vec::new())),
+            }
+        },
+        _ => Err(
+            LinslErr::SyntaxError(
+                "Can only find cdr of lists.".to_string(),
+                vec![1]
+            )
+        )
+    }
+}

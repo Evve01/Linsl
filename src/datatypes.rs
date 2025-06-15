@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, fmt, rc::Rc};
 
-use crate::primitives::{add, eq, gr, inv, mul, neg};
+use crate::primitives::{add, car, cdr, eq, gr, inv, mul, neg};
 
 pub type Num = f64;
 pub type PosNum = usize;
@@ -100,6 +100,8 @@ impl LinslEnv<'_> {
         env.insert("inv".to_string(), LinslExpr::Primitive(inv));
         env.insert("=".to_string(), LinslExpr::Primitive(eq));
         env.insert(">".to_string(), LinslExpr::Primitive(gr));
+        env.insert("car".to_string(), LinslExpr::Primitive(car));
+        env.insert("cdr".to_string(), LinslExpr::Primitive(cdr));
         LinslEnv { 
             inner: env,
             outer: None,
