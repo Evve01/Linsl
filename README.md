@@ -25,7 +25,7 @@ There are (currently) three kinds of atoms:
     cause an error.
 
 Numbers and bools are self-evaluating, unlike symbols; symbols must first be
-defined (see [here](#define)), and when evaluated will evaluate
+defined (see [here](#the-define-special-form)), and when evaluated will evaluate
 to whatever they are defined as evaluates to.
 
 ### Lists
