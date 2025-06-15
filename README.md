@@ -92,8 +92,8 @@ first, this is not the case with special forms. Below follows a description of a
 #### The `define` Special Form
 
 `define` takes two expressions, the first of which must be a symbol. It then
-adds this symbol to the environment, bound to the second expression. Important
-to note is that the second expression is **not** evaluated.
+adds this symbol to the environment, bound to the evaluation of second
+expression.
 
 #### The `if` Special Form
 
