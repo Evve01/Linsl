@@ -24,7 +24,7 @@ pub enum LinslExpr {
     /// A built in transformation of expressions. These have deliberately been kept as few as
     /// possible; there are just enough of them to allow other functions that are desirable to be
     /// defined in Linsl.
-    Primitive(fn(&[LinslExpr]) -> Result<LinslExpr, LinslErr>),
+    Primitive(fn(&[LinslExpr]) -> LinslRes),
     Symbol(String),
     /// A macro, which is similar to a closure but does not evaluate its parameters.
     Macro(Box<LinslExpr>, Box<LinslExpr>),
@@ -110,6 +110,13 @@ impl LinslEnv<'_> {
         LinslEnv { 
             inner: env,
             outer: None,
+        }
+    }
+    
+    pub fn new<'a>(outer: &'a LinslEnv) -> LinslEnv<'a> {
+        LinslEnv { 
+            inner: HashMap::new(),
+            outer: Some(outer)
         }
     }
 }

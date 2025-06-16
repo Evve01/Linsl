@@ -1,8 +1,53 @@
 //! Code for evaluating Linsl expressions.
 
-use std::{collections::HashMap};
+use crate::datatypes::{LinslEnv, LinslErr, LinslExpr, LinslRes, PosNum};
+use crate::parsing::{handle_result, parse_list_of_symbols};
 
-use crate::{datatypes::{LinslEnv, LinslErr, LinslExpr, PosNum}, parsing::{handle_result, parse_list_of_symbols}};
+/// Creates new bindings within the environment specified. For example, given the list of symbols
+/// (a b c) and the list of values (1 2 3) it will bind a to 1, b to 2 and c to 3.
+///
+/// If the list of values is longer than the list of symbols, the last symbol will be bound to the
+/// list of remaining values. For example, given the list of symbols (a b c) and the list of values
+/// (1 2 3 4), it will bind a to 1, b to 2 and c to (3 4).
+///
+/// If the list of values is shorter than the list of symbols, will generate an error.
+fn bind<'a>(
+    symbs: &LinslExpr,
+    vals: &LinslExpr,
+    env: &'a mut LinslEnv
+) -> Result<LinslEnv<'a>, LinslErr> {
+    let symbs_vec: Vec<String> = parse_list_of_symbols(symbs)?;
+    let vals_vec: Vec<LinslExpr> = match vals {
+        LinslExpr::List(v) => Ok(v.clone()),
+        _ => Err(
+            LinslErr::SyntaxError(
+                "Expected list of values.".to_string(),
+                vec![2]
+            )
+        ),
+    }?;
+
+    if symbs_vec.len() > vals_vec.len() {
+        return Err(
+            LinslErr::SyntaxError(
+                format!("Got {} symbols and {} values; cannot have more symbols than values.",
+                    symbs_vec.len(),
+                    vals_vec.len()),
+                vec![1]
+            )
+        );
+    };
+
+    for (k, v) in symbs_vec.iter().zip(vals_vec.iter()) {
+            env.inner.insert(k.clone(), v.clone());
+    };
+    if symbs_vec.len() < vals_vec.len() {
+        let i = symbs_vec.len();
+        let (_, vals_rest) = vals_vec.split_at(i - 1);
+        env.inner.insert(symbs_vec[i-1].clone(), LinslExpr::List(vals_rest.to_vec()));
+    };
+    Ok(env.clone())
+}
 
 /// Recursive function for finding the value for a symbol. Begins looking in the innermost scope,
 /// and looks in the outer scopes only if no match is found. If no match is found anywhere, returns
@@ -24,7 +69,7 @@ pub fn evaluate(
     expr: &LinslExpr, 
     pos: PosNum, 
     env: &mut LinslEnv
-) -> Result<LinslExpr, LinslErr> {
+) -> LinslRes {
     match expr {
         LinslExpr::Bool(_) => Ok(expr.clone()),
         LinslExpr::List(exprs) => handle_result(evaluate_list(exprs, env), pos),
@@ -53,13 +98,14 @@ fn evaluate_built_in_form(
     expr: &LinslExpr, 
     param_forms: &[LinslExpr], 
     env: &mut LinslEnv
-) -> Option<Result<LinslExpr, LinslErr>> {
+) -> Option<LinslRes> {
     match expr {
         LinslExpr::Symbol(s) =>
             match s.as_ref() {
                 "define" => Some(evaluate_define(param_forms, env)),
                 "if" => Some(evaluate_if(param_forms, env)),
                 "lambda" => Some(evaluate_lambda(param_forms)),
+                "macro" => Some(evaluate_macro(param_forms)),
                 "quote" => match param_forms.first() {
                     Some(e) => Some(Ok(e.clone())),
                     None => Some(
@@ -75,10 +121,10 @@ fn evaluate_built_in_form(
     }
 }
 
-/// Evaluation for the primitive "define". It adds a new binding to the inner scope, without
-/// evaluating it. In other words, the expression bound to a variable is not evaluated when
-/// creating the binding, only when using it.
-fn evaluate_define(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
+/// Evaluation for the primitive "define". It adds a new binding to the inner scope, by
+/// evaluating the second expression, and associating the first (which mus tbe a symbol) with the
+/// returned value.
+fn evaluate_define(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
     if exprs.len() != 2 {
         return Err(
             LinslErr::SyntaxError(
@@ -120,7 +166,7 @@ fn evaluate_forms(forms: &[LinslExpr], env: &mut LinslEnv) -> Result<Vec<LinslEx
 /// Then: 
 /// - if b it evaluates the first expression after the test expression.
 /// - if !b it evaluates the second expression after the test expression.
-fn evaluate_if(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
+fn evaluate_if(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
     if exprs.len() != 3 {
         return Err(
             LinslErr::SyntaxError(
@@ -153,34 +199,18 @@ fn evaluate_if(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, Lin
 }
 
 /// Evaluation of the primitive "lambda" used to create a closure.
-fn evaluate_lambda(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
-    if expr.len() != 2 {
-        return Err(
-            LinslErr::SyntaxError(
-                format!("Lambda must be given two expressions, found {}", expr.len()),
-                vec![0]
-            )
-        );
-    };
-
-    let params_form = expr.first().ok_or(
-        LinslErr::InternalError("Could not read parameters.".to_string())
-    )?;
-
-    let body_form = expr.get(1).ok_or(
-        LinslErr::InternalError("Could not read lambda body.".to_string())
-    )?;
-
+fn evaluate_lambda(expr: &[LinslExpr]) -> LinslRes {
+    let (params_form, body_form) = get_params_and_body(expr)?;
     Ok(
         LinslExpr::Closure(
-            Box::new(params_form.clone()), 
-            Box::new(body_form.clone()),
+            Box::new(params_form),
+            Box::new(body_form),
         )
     )
 }
 
 
-fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
+fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
     let head = exprs
         .first()
         .ok_or(
@@ -196,7 +226,18 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, L
             let primitive = evaluate(head, 0, env)?;
             match primitive {
                 LinslExpr::Closure(param, body) => {
-                    let lambda_env = &mut handle_result(local_env(&param, param_forms, env), 1)?;
+                    let evals = LinslExpr::List(evaluate_forms(
+                                param_forms,
+                                env)?);
+                    let mut new_env = LinslEnv::new(env);
+                    let lambda_env = &mut handle_result(
+                        bind(
+                            &param, 
+                            &evals,
+                            &mut new_env
+                            ),
+                        1
+                        )?;
                     evaluate(&body, 2, lambda_env)
                 },
                 LinslExpr::Primitive(f) => {
@@ -206,6 +247,18 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, L
                         .map(|(e, i)| evaluate(e, i, env))
                         .collect::<Result<Vec<LinslExpr>, LinslErr>>();
                     f(&params_eval?)
+                },
+                LinslExpr::Macro(param, body) => {
+                    let e = env.clone();
+                    let mut new_env = LinslEnv::new(&e);
+                    let macro_env = &mut handle_result(
+                        bind(
+                            &param,
+                            &LinslExpr::List(param_forms.to_vec()),
+                            &mut new_env
+                        ),
+                    1)?;
+                    evaluate(&evaluate(&body, 2, macro_env)?, 1, env)
                 },
                 _ => Err(
                     LinslErr::SyntaxError(
@@ -218,32 +271,33 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> Result<LinslExpr, L
     }
 }
 
-fn local_env<'a>(
-    new_names: &LinslExpr,
-    vals: &[LinslExpr],
-    outer_env: &'a mut LinslEnv
-) -> Result<LinslEnv<'a>, LinslErr> {
-    let symbs: Vec<String> = parse_list_of_symbols(new_names)?;
-    if symbs.len() != vals.len() {
+fn evaluate_macro(exprs: &[LinslExpr]) -> LinslRes {
+    let (params_form, body_form) = get_params_and_body(exprs)?;
+    Ok(
+        LinslExpr::Macro(
+            Box::new(params_form),
+            Box::new(body_form)
+        )
+    )
+}
+
+fn get_params_and_body(exprs: &[LinslExpr]) -> Result<(LinslExpr, LinslExpr), LinslErr> {
+    if exprs.len() != 2 {
         return Err(
             LinslErr::SyntaxError(
-                format!("Expected {} values, found {}", symbs.len(), vals.len()),
+                format!("Lambda must be given two expressions, found {}", exprs.len()),
                 vec![0]
             )
         );
     };
 
-    let vals_eval = evaluate_forms(vals, outer_env)?;
-    let mut new_env: HashMap<String, LinslExpr> = HashMap::new();
+    let params_form = exprs.first().ok_or(
+        LinslErr::InternalError("Could not read parameters.".to_string())
+    )?;
 
-    for (k, v) in symbs.iter().zip(vals_eval.iter()) {
-        new_env.insert(k.clone(), v.clone());
-    }
+    let body_form = exprs.get(1).ok_or(
+        LinslErr::InternalError("Could not read lambda body.".to_string())
+    )?;
 
-    Ok(
-        LinslEnv { 
-            inner: new_env, 
-            outer: Some(outer_env),
-        }
-    )
+    Ok((params_form.clone(), body_form.clone()))
 }
