@@ -1,18 +1,18 @@
 //! The built in functions/forms. Here we define precisely as much as we need to to be able to
 //! define any other functions/macros we desire in Linsl code.
 
-use crate::datatypes::Num;
+use crate::datatypes::{LinslRes, Num};
 use crate::{LinslExpr, LinslErr};
 use crate::parsing::{parse_list_of_nums, parse_num};
 
 /// Compute the sum of a list of (numeric) arguments.
-pub fn add(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr>{
+pub fn add(exprs: &[LinslExpr]) -> LinslRes {
     let sum = parse_list_of_nums(exprs, 1)?.iter().fold(0 as Num, |sum, v| sum + v);
     Ok(LinslExpr::Number(sum))
 }
 
 /// Negate a single element.
-pub fn neg(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr>{
+pub fn neg(expr: &[LinslExpr]) -> LinslRes {
     let mut num : Num = 0 as Num;
     if !expr.is_empty() {
         num = parse_num(&expr[0], 1)?;
@@ -21,13 +21,13 @@ pub fn neg(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr>{
 }
 
 /// Compute the product of a list of (numeric) arguments.
-pub fn mul(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+pub fn mul(exprs: &[LinslExpr]) -> LinslRes {
     let mul = parse_list_of_nums(exprs, 1)?.iter().fold(1 as Num, |mul, v| mul * v);
     Ok(LinslExpr::Number(mul))
 }
 
 /// Compute the multiplicative inverse of a (numeric) argument.
-pub fn inv(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+pub fn inv(expr: &[LinslExpr]) -> LinslRes {
     if expr.is_empty() {
         return Err(
             LinslErr::SyntaxError(
@@ -51,7 +51,7 @@ pub fn inv(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
 }
 
 /// Compare two numbers, symbols or booleans for equality.
-pub fn eq(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+pub fn eq(exprs: &[LinslExpr]) -> LinslRes {
     if exprs.len() != 2 {
         return Err(
             LinslErr::SyntaxError(
@@ -78,7 +78,7 @@ pub fn eq(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
 }
 
 /// Compare two numbers to see if the first is greater than the second.
-pub fn gr(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+pub fn gr(exprs: &[LinslExpr]) -> LinslRes {
     if exprs.len() != 2 {
         return Err(
             LinslErr::InternalError(
@@ -100,7 +100,7 @@ pub fn gr(exprs: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
     Ok(LinslExpr::Bool(res))
 }
 
-pub fn car(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+pub fn car(expr: &[LinslExpr]) -> LinslRes {
     if expr.len() != 1 {
         return Err(
             LinslErr::SyntaxError(
@@ -120,7 +120,7 @@ pub fn car(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
     }
 }
 
-pub fn cdr(expr: &[LinslExpr]) -> Result<LinslExpr, LinslErr> {
+pub fn cdr(expr: &[LinslExpr]) -> LinslRes {
     if expr.len() != 1 {
         return Err(
             LinslErr::SyntaxError(

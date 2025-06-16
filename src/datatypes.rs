@@ -10,6 +10,8 @@ pub type PosNum = usize;
 /// occurred.
 pub type Pos = Vec<PosNum>;
 
+pub type LinslRes = Result<LinslExpr, LinslErr>;
+
 /// The basic unit of code in the language. Any valid piece of Linsl code is an expression.
 #[derive(Debug, Clone)]
 pub enum LinslExpr {
@@ -24,6 +26,8 @@ pub enum LinslExpr {
     /// defined in Linsl.
     Primitive(fn(&[LinslExpr]) -> Result<LinslExpr, LinslErr>),
     Symbol(String),
+    /// A macro, which is similar to a closure but does not evaluate its parameters.
+    Macro(Box<LinslExpr>, Box<LinslExpr>),
 }
 
 impl fmt::Display for LinslExpr {
@@ -41,6 +45,7 @@ impl fmt::Display for LinslExpr {
             }
             LinslExpr::Number(v)        => v.to_string(),
             LinslExpr::Symbol(s)        => s.clone(),
+            LinslExpr::Macro(ps, bd)    => format!("(macro {}, {})", ps, bd),
         };
 
         write!(f, "{}", str)
