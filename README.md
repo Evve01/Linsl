@@ -1,8 +1,9 @@
 # Linsl
 
-Linsl &ndash; Linsl is not Scheme or Lisp &ndash; is a *very* simple Lisp/Scheme like
-language. It is currently technically functional and (should be) Turing
-complete, although far from complete (or even really pleasant to use).
+Linsl &ndash; Linsl is not Scheme or Lisp &ndash; is a *very* simple
+Lisp/Scheme like language. It is currently technically functional and (should
+be) Turing complete, although far from complete (or even really pleasant to
+use).
 
 ## Usage
 
@@ -25,16 +26,16 @@ There are (currently) three kinds of atoms:
     cause an error.
 
 Numbers and bools are self-evaluating, unlike symbols; symbols must first be
-defined (see [here](#the-define-special-form)), and when evaluated will evaluate
-to whatever they are defined as evaluates to.
+defined (see [here](#the-define-special-form)), and when evaluated will
+evaluate to whatever they are defined as evaluates to.
 
 ### Lists
 
 A list is a sequence of expressions, separated by white space and surrounded by
 regular parentheses. Furthermore, for a list to be a valid expression, its head
-must be either a [primitive](#primitives) or a [special
-form](#special-forms). For example, `(1 2 3)` is technically a valid list,
-but not a valid expression, while `(+ 1 2)` is both.
+must be either a [primitive](#primitives) or a [special form](#special-forms).
+For example, `(1 2 3)` is technically a valid list, but not a valid expression,
+while `(+ 1 2)` is both.
 
 ### Primitives
 
@@ -66,16 +67,17 @@ evaluates to `24`.
 `inv` takes a single, non-zero number and returns its reciprocal. For example,
 `(inv 2)` evaluates to `0.5`.
 
-Note that -- for the same reasons as there is no `-` -- there is no built in `/`.
+Note that -- for the same reasons as there is no `-` -- there is no built in
+`/`.
 
 #### The `=`-primitive
 
 `=` tests two expressions for equality, after evaluation. For example, `(= 1 (+
 0 1))` evaluates to `#t`. 
 
-Only booleans and numbers can be compared,
-and only two expressions of the same type; in other words, the expression `(=
-#t 1)` will generate an error, since `1` and `#t` are not the same type.
+Only booleans and numbers can be compared, and only two expressions of the same
+type; in other words, the expression `(= #t 1)` will generate an error, since
+`1` and `#t` are not the same type.
 
 #### The `>`-primitive
 
@@ -96,7 +98,8 @@ the empty list.
 
 Special forms act like primitives or functions, but differ in that they change
 how evaluation is done. While a primitive always evaluates all its parameters
-first, this is not the case with special forms. Below follows a description of all special forms.
+first, this is not the case with special forms. Below follows a description of
+all special forms.
 
 #### The `define` Special Form
 
@@ -120,6 +123,23 @@ Essentially, the `lambda` special form allows you to create parameterized
 expressions. If a `lambda` form is combined with a `define` form, a name can be
 given to this parameterized expression, and it can then be used as the head of
 a list, just as any of the primitives.
+
+As an example, take the following definition: `(define add-five (lambda (x) (+
+x 5)))`; if we later evalute `(define add-five 3)`, we will get `8`.
+
+#### The `macro` Special Form
+
+`macro` works almost identically to lambda, with one important difference: when
+a lambda is applied it begins by evaluating its arguments; a macro does not.
+This means that if some lambda `(lambda (x) ...)` is applied to e.g. `(+ 1 2)`,
+`x` would be bound to `3`, as that is what `(+ 1 2)` evaluates to. When a macro
+`(macro (x) ...)` is applied to e.g. `(+ 1 2)`, `x` would be bound to `(+ 1
+2)`[^macros].
+
+[^macros]: Macros are incredibly powerful, since they allow the language to be
+    extended with completely new syntactic forms. For those who are unfamiliar
+    with Lisp macros, see e.g.
+    [here](https://lisp-docs.github.io/docs/tutorial/macros)
 
 #### The `quote` Special Form
 
