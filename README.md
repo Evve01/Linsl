@@ -7,7 +7,7 @@ use).
 
 ## Usage
 
-Linsl code is -- just as other lisp dialects -- based around expressions. An
+Linsl code is &ndash; just as other lisp dialects &ndash; based around expressions. An
 expression is either
 
 - an atom, or
@@ -20,7 +20,7 @@ There are (currently) three kinds of atoms:
 - bools[^bools], either `#t` or `#f` and
 - symbols, which can be any string.
 
-[^bools]: Note that unlike Lisp -- and like Scheme -- Linsl considers booleans
+[^bools]: Note that unlike Lisp &ndash; and like Scheme &ndash; Linsl considers booleans
     to be a type in their own right, and does not consider lists valid truth
     values. Consequently, expressions like `(if (+ 1 2) (...) (...))` will
     cause an error.
@@ -53,7 +53,7 @@ evaluates to `6`.
 `neg` takes a single number and returns its negation. For example, `(neg 1)`
 evaluates to `-1`.
 
-Note that -- unlike other lisp/scheme dialects -- there is no built in `-`.
+Note that &ndash; unlike other lisp/scheme dialects &ndash; there is no built in `-`.
 This is in an effort to keep the interpreter as minimal as possible, since this
 function can be defined in Linsl using the `+` and `neg` primitives.
 
@@ -67,7 +67,7 @@ evaluates to `24`.
 `inv` takes a single, non-zero number and returns its reciprocal. For example,
 `(inv 2)` evaluates to `0.5`.
 
-Note that -- for the same reasons as there is no `-` -- there is no built in
+Note that &ndash; for the same reasons as there is no `-` &ndash; there is no built in
 `/`.
 
 #### The `=`-primitive
