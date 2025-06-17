@@ -9,10 +9,10 @@ mod parsing;
 
 use evaluation::evaluate;
 use parsing::{parse, tokenize};
-use datatypes::{LinslEnv, LinslErr, LinslExpr};
+use datatypes::{LinslEnv, LinslErr, LinslExpr, LinslRes};
 
 
-fn parse_eval(expr: String, env: &mut LinslEnv) -> Result<LinslExpr, LinslErr> {
+fn parse_eval(expr: String, env: &mut LinslEnv) -> LinslRes {
     let (parse_res, rest) = parse(&tokenize(expr)?, 0)?;
     if !rest.is_empty() {
         return Err(LinslErr::SyntaxError("Unexpected characters at end.".to_string(), Vec::new()));
