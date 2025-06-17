@@ -148,9 +148,19 @@ used to, for example, create lists; `(quote (1 2))` evaluates to `(1 2)`.
 
 # Acknowledgements
 
-This implementation was heavily inspired by [Risp by Stepan
-Parunashvili](https://stopa.io/post/222) and [rustylisp by
-galzmarc](https://dev.to/galzmarc/building-a-lisp-interpreter-in-rust-2njj).
-Further inspiration and tricks were taken from [Lispy by Peter
-Norvig](https://norvig.com/lispy.html) and [tinylisp by Robert van
-Engelen](https://github.com/Robert-van-Engelen/tinylisp)
+When making this interpreter I relied on the work of several others for
+inspiration and technical solutions, specifically:
+
+- **[Risp](https://stopa.io/post/222) by Stepan Parunashvili and
+  [rustylisp](https://dev.to/galzmarc/building-a-lisp-interpreter-in-rust-2njj)
+  by galzmarc**: Much of the structure of the internal datatypes and overall
+  code structure were taken from these.
+
+- **[Lispy](https://norvig.com/lispy.html) and [Lispy
+  2](https://norvig.com/lispy2.html) by Peter Norvig**: Much inspiration for
+  the implementation of reading/parsing (such as using regular expressions) was
+  taken from here.
+
+- **[tinylisp](https://github.com/Robert-van-Engelen/tinylisp) by Robert van
+  Engelen**: Source of general inspiration, and particularly helpful when
+  implementing macros.
