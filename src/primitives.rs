@@ -144,3 +144,23 @@ pub fn cdr(expr: &[LinslExpr]) -> LinslRes {
         )
     }
 }
+
+pub fn is_nil(expr: &[LinslExpr]) -> LinslRes {
+    if expr.len() != 1 {
+        return Err(
+            LinslErr::SyntaxError(
+                format!("Expected 1 argument, found {}", expr.len()),
+                vec![1]
+            )
+        );
+    };
+
+    match &expr[0] {
+        LinslExpr::List(linsl_exprs) => Ok(
+            LinslExpr::Bool(linsl_exprs.is_empty())
+        ),
+        _ => Ok(
+            LinslExpr::Bool(false)
+        )
+    }
+}
