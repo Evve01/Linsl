@@ -27,6 +27,10 @@ fn bind<'a>(
         ),
     }?;
 
+    if symbs_vec.is_empty() {
+        return Ok(env.clone());
+    };
+
     if symbs_vec.len() > vals_vec.len() {
         return Err(
             LinslErr::SyntaxError(
