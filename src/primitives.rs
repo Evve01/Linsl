@@ -164,3 +164,27 @@ pub fn is_nil(expr: &[LinslExpr]) -> LinslRes {
         )
     }
 }
+
+pub fn eq_types(exprs: &[LinslExpr]) -> LinslRes {
+    if exprs.len() != 2 {
+        return Err(
+            LinslErr::SyntaxError(
+                format!("Expected 2 arguments, found {}", exprs.len()),
+                vec![1]
+            )
+        );
+    };
+    let (a, b) = (exprs[0].clone(), exprs[1].clone());
+
+    let bool = matches!((a, b), 
+        (LinslExpr::Bool(_), LinslExpr::Bool(_))
+        | (LinslExpr::Closure(_, _), LinslExpr::Closure(_, _))
+        | (LinslExpr::List(_), LinslExpr::List(_))
+        | (LinslExpr::Number(_), LinslExpr::Number(_))
+        | (LinslExpr::Primitive(_), LinslExpr::Primitive(_))
+        | (LinslExpr::Symbol(_), LinslExpr::Symbol(_))
+        | (LinslExpr::Macro(_, _), LinslExpr::Macro(_, _))
+    );
+
+    Ok(LinslExpr::Bool(bool))
+}

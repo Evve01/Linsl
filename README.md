@@ -99,6 +99,11 @@ empty list, it returns the empty list.
 `empty` takes one argument, and returns `#t` if it is a list and that list is
 empty; otherwise, it returns `#f`.
 
+#### The `eqt?`-primitive
+
+`eqt?` takes two arguments, and checks if they are of the same type. If they
+are, returns `#t`, if not returns `#f`.
+
 ### Special Forms
 
 Special forms act like primitives or functions, but differ in that they change
