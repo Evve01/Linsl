@@ -91,8 +91,13 @@ the empty list.
 
 #### The `cdr`-primitive
 
-`cdr` takes a list, and returns its tail. If given an empty list, it returns
-the empty list.
+`cdr` takes a list, and returns its tail. If given a one element list or an
+empty list, it returns the empty list.
+
+#### The `empty?`-primitive
+
+`empty` takes one argument, and returns `#t` if it is a list and that list is
+empty; otherwise, it returns `#f`.
 
 ### Special Forms
 
@@ -125,7 +130,7 @@ given to this parameterized expression, and it can then be used as the head of
 a list, just as any of the primitives.
 
 As an example, take the following definition: `(define add-five (lambda (x) (+
-x 5)))`; if we later evalute `(define add-five 3)`, we will get `8`.
+x 5)))`; if we later evaluate `(define add-five 3)`, we will get `8`.
 
 #### The `macro` Special Form
 
