@@ -10,6 +10,7 @@ mod parsing;
 use evaluation::evaluate;
 use parsing::{parse, tokenize};
 use datatypes::{LinslEnv, LinslErr, LinslExpr, LinslRes};
+use regex::Regex;
 
 
 fn parse_eval(expr: String, env: &mut LinslEnv) -> LinslRes {
@@ -24,6 +25,7 @@ fn parse_eval(expr: String, env: &mut LinslEnv) -> LinslRes {
 
 fn main() {
     let env = &mut LinslEnv::default();
+    let parse_regex = Regex::new(r"\s*(,@|[('`,)]|;.*|[^\s('`,;)]*)(.*)").unwrap();
     loop {
         print!("Linsl> ");
         io::stdout().flush().expect("Could not print!");
