@@ -1,8 +1,10 @@
 //! The datatypes used throughout the code base.
 
-use std::{collections::HashMap, fmt};
+use std::{collections::{HashMap, VecDeque}, fmt, io::BufRead};
 
-use crate::primitives::{add, car, cdr, eq, gr, inv, mul, neg};
+use regex::Regex;
+
+use crate::{primitives::{add, car, cdr, eq, gr, inv, mul, neg}};
 
 pub type Num = f64;
 pub type PosNum = usize;
@@ -118,5 +120,121 @@ impl LinslEnv<'_> {
             inner: HashMap::new(),
             outer: Some(outer)
         }
+    }
+}
+
+/// Tokenizer, resopnisble for the retrieval and tokenization of input strings.
+/// `inputs` are the sources to read from, such as files or stdin.
+/// tokens holds the results of tokenizing a single line.
+///
+/// When created must be supplied with inputs. It will then tokenize the first line from the fisrt
+/// input. Tokens can be retrieved using the next_token method.
+pub struct Tokenizer {
+    /// The inputs to read from, in order.
+    inputs: VecDeque<Box<dyn BufRead>>,
+    /// Tokens from the latest tokenized line.
+    tokens: VecDeque<String>,
+}
+
+impl Tokenizer {
+    /// Create a new Tokenizer, which will read code from the given inputs.
+    pub fn new(inputs: VecDeque<Box<dyn BufRead>>) -> Result<Self, LinslErr> {
+        let mut tokenizer = Self {
+            inputs,
+            tokens: VecDeque::new(),
+        };
+
+        tokenizer.tokenize_line()?;
+        Ok(tokenizer)
+    }
+
+    /// Add a new input for the tokenizer to read from. Will be read from when all previously added
+    /// inputs are exhausted.
+    pub fn add_input(&mut self, input: Box<dyn BufRead>) -> () {
+        self.inputs.push_back(input);
+    }
+
+    /// Returns the next token, or None if all inputs have been exhausted.
+    pub fn next_token(&mut self) -> Result<Option<String>, LinslErr> {
+        // First, try to get the next token from the tokens.
+        let token = self.tokens.pop_front();
+
+        // If the tokens VecDeque was not empty, return the popped element,
+        if token.is_some() {
+            Ok(token)
+        }
+        // else tokenize the next line and return the first token from that line.
+        else {
+            self.tokenize_line()?;
+            Ok(self.tokens.pop_front())
+        }
+    }
+
+    fn regex() -> Regex {
+        Regex::new(r"\s*(,@|[('`,)]|;.*|[^\s('`,;)]*)(.*)").unwrap()
+    }
+
+    /// Finds the next line and tokenizes it. If no more valid input exists returns None.
+    fn tokenize_line(&mut self) -> Result<Option<()>, LinslErr> {
+        // First, let's try to get the next line from the inputs.
+        let line = self.get_line();
+
+        // If something went wrong, we return an error.
+        if let Err(e) = line {
+            return Err(LinslErr::InternalError(format!("{:?}", e)));
+        }
+        // Otherwise, we check if we ran out of input.
+        let initial_rest = match line.unwrap() {
+            // If there was input, that input is fine as is,
+            Some(s) => s.to_string(),
+            // otherwise we return None, marking EOF for all inputs.
+            None => return Ok(None),
+        };
+
+        // At this point, we know that initial_rest contains a line of text. We can therefore begin
+        // tokenizing it.
+        // At the start of tokenization, the entire line is "the rest".
+        let mut rest: &str = &initial_rest;
+        let re = Tokenizer::regex();
+
+        // We then start tokenizing, and keep doing that until we've tokenized everything.
+        loop {
+            for (_, [result, unmatched]) in re.captures_iter(rest).map(|c| c.extract()) {
+                // If the token is not a comment, add it to tokens.
+                if result.chars().nth(0) != Some(';') {
+                    self.tokens.push_back(result.to_string());
+                }
+                rest = unmatched;
+            };
+
+            if rest.is_empty() {
+                break;
+            }
+        };
+        Ok(Some(()))
+    }
+
+    /// Gets the next line from the inputs. If the current head of the inputs is empty, will pop it
+    /// and start reading from the next. If there is no valid input left, returns None.
+    fn get_line(&mut self) -> Result<Option<String>, std::io::Error> {
+        // First, check if there exists an input to get text from.
+        // If not, return none.
+        if self.inputs.front().is_none() {
+            return Ok(None);
+        };
+        // If it does exist, check if it is empty.
+        if self.inputs[0].fill_buf()?.is_empty() {
+            // If it is, remove that input and continue to the next one.
+            self.inputs.pop_front();
+            return self.get_line();
+        };
+
+        // With these checks done, we know that a non-empty input exists.
+        // Therefore, we create a string to read the line into,
+        let mut initial_rest = String::new();
+        // fill it,
+        let _ = self.inputs[0].read_line(&mut initial_rest);
+        // and return it.
+        Ok(Some(initial_rest))
     }
 }
