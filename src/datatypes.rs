@@ -20,13 +20,13 @@ pub enum LinslExpr {
     Closure(Box<LinslExpr>, Box<LinslExpr>),
     List(Vec<LinslExpr>),
     Number(Num),
+    /// A macro, which is similar to a closure but does not evaluate its parameters.
+    Macro(Box<LinslExpr>, Box<LinslExpr>),
     /// A built in transformation of expressions. These have deliberately been kept as few as
     /// possible; there are just enough of them to allow other functions that are desirable to be
     /// defined in Linsl.
     Primitive(fn(&[LinslExpr]) -> LinslRes),
     Symbol(String),
-    /// A macro, which is similar to a closure but does not evaluate its parameters.
-    Macro(Box<LinslExpr>, Box<LinslExpr>),
 }
 
 impl fmt::Display for LinslExpr {
