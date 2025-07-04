@@ -220,10 +220,10 @@ pub fn parse(mut tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     // We then check the token.
     match token.as_str() {
         // If it is a quote or quasiquote, parse the rest accordingly.
-        "'" => parse_quote(&mut tokenizer),
+        "'" => parse_quote(tokenizer),
         "`" => parse_quasiquote(&mut tokenizer),
         // An opening parenthesis means we start reading a new list.
-        "(" => parse_list(&mut tokenizer),
+        "(" => parse_list(tokenizer, parse),
         // If we encounter a closing parenthesis something went wrong.
         ")" => Err(
             LinslErr::SyntaxError(
@@ -255,9 +255,9 @@ fn parse_atom(atom : &str) -> LinslExpr {
     }
 }
 
-/// If an opening parenthesis is encountered, this function is called. It parses tokens until it
-/// encounters a closing parenthesis.
-fn parse_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
+/// If an opening parenthesis is encountered, this function is called. It parses -- using the
+/// supplied parser function -- until it encounters a closing parenthesis.
+fn parse_list(tokenizer: &mut Tokenizer, parser: fn(&mut Tokenizer) -> Result<LinslExpr, LinslErr>) -> Result<LinslExpr, LinslErr> {
     // FIrst, create a vec to keep the list elements in.
     let mut list_elems: Vec<LinslExpr> = Vec::new();
     // Then we start looping over tokens:
@@ -278,13 +278,13 @@ fn parse_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
         // If the token is `)` the list has ended,
         if token == ")" {
             // so we remove the closing parenthesis
-            tokenizer.next_token();
+            let _ = tokenizer.next_token();
             // and stop looping.
             break;
         };
 
         // Otherwise, parse the next expresion, and 
-        let exp = parse(tokenizer)?;
+        let exp = parser(tokenizer)?;
         // add it as an element to the list.
         list_elems.push(exp);
     };
@@ -293,10 +293,9 @@ fn parse_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     Ok(LinslExpr::List(list_elems))
 }
 
-pub fn parse_list_of_nums(nums: &[LinslExpr], start_index: PosNum) -> Result<Vec<Num>, LinslErr>{
-    nums.iter()
-        .zip(start_index..)
-        .map(|(e, i)| parse_num(e, i))
+pub fn parse_list_of_nums(nums: Box<[LinslExpr]>) -> Result<Vec<Num>, LinslErr>{
+    (*nums).iter()
+        .map(|e| parse_num(e))
         .collect::<Result<Vec<Num>, LinslErr>>()
 }
 
@@ -304,21 +303,23 @@ pub fn parse_list_of_symbols(symbs: &LinslExpr) -> Result<Vec<String>, LinslErr>
     let list = match symbs {
         LinslExpr::List(s) => Ok(s.clone()),
         _ => Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 format!("Expected list of symbols, found \'{}\'", symbs),
-                vec![0]
+                (0, 0)
             )
         ),
     }?;
 
-    list.iter().zip(0 as PosNum..).map(
-        |(x, i)| {
+    list.iter().map(
+        |x| {
             match x {
                 LinslExpr::Symbol(s) => Ok(s.clone()),
                 _ => Err(
+                    // TODO: Fix pos.
                     LinslErr::SyntaxError(
                         format!("Expected symbol, found \'{}\'", x),
-                        vec![i]
+                        (0, 0)
                     )
                 ),
             }
@@ -326,23 +327,82 @@ pub fn parse_list_of_symbols(symbs: &LinslExpr) -> Result<Vec<String>, LinslErr>
     ).collect()
 }
 
-pub fn parse_num(expr: LinslExpr, position: PosNum) -> Result<Num, LinslErr> {
+pub fn parse_num(expr: &LinslExpr) -> Result<Num, LinslErr> {
     match expr {
-        LinslExpr::Number(v) => Ok(v),
+        LinslExpr::Number(v) => Ok(*v),
         _ => Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 format!("Expected numbers, found \'{}\'", expr), 
-                vec![position]
+                (0, 0)
             )
         ),
     }
 }
 
+/// Rewrites 'x -- where x is any Linsl expression -- as (quote x).
 fn parse_quote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
-
+    // Get the next expression.
+    match parse(tokenizer) {
+        // If this went well, wrap it in a list with head quote,
+        Ok(expr) => Ok(
+            LinslExpr::List(
+                vec![LinslExpr::Symbol("quote".to_string()),
+                    expr]
+            )
+        ),
+        // else, return the error.
+        Err(e) => Err(e),
+    }
 }
 
-fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {}
+/// Rewrites 
+/// 1. `(x_1 ... ,x_n ... x_m) as (list (quote x_1) ... x_n ... (quote x_m)),
+/// 2. `,x as x 
+/// 3. `(... ,@x ...) as (list ... (unwrap x) ...).
+/// 4. `x as (quote x)
+fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
+    // We start by getting the first token:
+    let token = match tokenizer.next_token()? {
+        // Take the token if there was one, else return an error.
+        Some(t) => t,
+        None => return Err(
+            LinslErr::SyntaxError(
+                "Unexpected EOF.".to_string(),
+                tokenizer.get_pos()
+            )
+        ),
+    };
+
+    // We can now inspect the token.
+    match token.as_str() {
+        // A comma escapes the quoting, i.e. `,x <=> x, and so we simply continue.
+        "," => parse(tokenizer),
+        // Here we do mutch the same as for a comma, but we need to add unwrap.
+        ",@" => Ok(
+            LinslExpr::List(
+                vec![
+                LinslExpr::Symbol("unwrap".to_string()),
+                parse(tokenizer)?
+                ]
+            )
+        ),
+        // If we encounter an opening parenthesis -- which is what we often do when the user uses
+        // quasiquotes -- we parse the list.
+        "(" => {
+            if let LinslExpr::List(mut v) = parse_list(tokenizer, parse_quasiquote)? {
+                v.insert(0, LinslExpr::Symbol("list".to_string()));
+                Ok(LinslExpr::List(v))
+            } else {
+                panic!("parse_list did not return a list when parsing quasi-quote!")
+            }
+        }
+        
+        // If none of the others have matched, then we have a non-escaped atom; in this case a
+        // quasiquote behaves the same as a regular quote.
+        _ => parse_quote(tokenizer),
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -421,4 +481,3 @@ mod test {
         });
     }
 }
-
