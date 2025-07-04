@@ -7,7 +7,7 @@ use crate::parsing::{parse_list_of_nums, parse_num};
 
 /// Compute the sum of a list of (numeric) arguments.
 pub fn add(exprs: &[LinslExpr]) -> LinslRes {
-    let sum = parse_list_of_nums(exprs, 1)?.iter().fold(0 as Num, |sum, v| sum + v);
+    let sum = parse_list_of_nums(exprs.into())?.iter().fold(0 as Num, |sum, v| sum + v);
     Ok(LinslExpr::Number(sum))
 }
 
@@ -15,14 +15,14 @@ pub fn add(exprs: &[LinslExpr]) -> LinslRes {
 pub fn neg(expr: &[LinslExpr]) -> LinslRes {
     let mut num : Num = 0 as Num;
     if !expr.is_empty() {
-        num = parse_num(&expr[0], 1)?;
+        num = parse_num(&expr[0])?;
     }
     Ok(LinslExpr::Number(-num))
 }
 
 /// Compute the product of a list of (numeric) arguments.
 pub fn mul(exprs: &[LinslExpr]) -> LinslRes {
-    let mul = parse_list_of_nums(exprs, 1)?.iter().fold(1 as Num, |mul, v| mul * v);
+    let mul = parse_list_of_nums(exprs.into())?.iter().fold(1 as Num, |mul, v| mul * v);
     Ok(LinslExpr::Number(mul))
 }
 
@@ -30,19 +30,22 @@ pub fn mul(exprs: &[LinslExpr]) -> LinslRes {
 pub fn inv(expr: &[LinslExpr]) -> LinslRes {
     if expr.is_empty() {
         return Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 "No number to invert!".to_string(),
-                vec![1])
+                (0, 0)
+            )
         );
     };
 
-    let num = parse_num(&expr[0], 1)?;
+    let num = parse_num(&expr[0])?;
 
     if num == 0 as Num {
         return Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 "Cannot invert 0".to_string(),
-                vec![1]
+                (0, 0)
             )
         );
     };
@@ -54,9 +57,10 @@ pub fn inv(expr: &[LinslExpr]) -> LinslRes {
 pub fn eq(exprs: &[LinslExpr]) -> LinslRes {
     if exprs.len() != 2 {
         return Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 format!("Expected 2 arguments to compare, got {}", exprs.len()),
-                vec![0]
+                (0, 0)
             )
         );
     };
@@ -66,10 +70,11 @@ pub fn eq(exprs: &[LinslExpr]) -> LinslRes {
         (LinslExpr::Number(v1), LinslExpr::Number(v2)) => v1 == v2, 
         (LinslExpr::Symbol(s1), LinslExpr::Symbol(s2)) => s1 == s2,
         _ => Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 "Can only compare expressions the same types, and only bools, numbers and symbols."
                     .to_string(),
-                vec![0]
+                    (0, 0)
             )
         )?,
     };
@@ -90,9 +95,10 @@ pub fn gr(exprs: &[LinslExpr]) -> LinslRes {
     let res: bool = match (exprs[0].clone(), exprs[1].clone()) {
         (LinslExpr::Number(v1), LinslExpr::Number(v2)) => v1 > v2,
         _ => Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 "Can only compare numbers with >".to_string(),
-                vec![0]
+                (0, 0)
             )
         )?,
     };
@@ -103,9 +109,11 @@ pub fn gr(exprs: &[LinslExpr]) -> LinslRes {
 pub fn car(expr: &[LinslExpr]) -> LinslRes {
     if expr.len() != 1 {
         return Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 format!("Expected 1 argument, found {}", expr.len()), 
-                vec![1])
+                (0, 0)
+            )
         );
     };
 
@@ -114,18 +122,24 @@ pub fn car(expr: &[LinslExpr]) -> LinslRes {
             Some(e) => Ok(e.clone()),
             None => Ok(LinslExpr::List(Vec::new())),
         }
-        _ => Err(LinslErr::SyntaxError(
+        _ => Err(
+            // TODO: Fix pos.
+            LinslErr::SyntaxError(
                 "Can only find car of lists".to_string(), 
-                vec![1]))
+                (0, 0)
+            )
+        )
     }
 }
 
 pub fn cdr(expr: &[LinslExpr]) -> LinslRes {
     if expr.len() != 1 {
         return Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 format!("Expected 1 argument, found {}", expr.len()), 
-                vec![1])
+                (0, 0)
+            )
         );
     };
 
@@ -137,9 +151,10 @@ pub fn cdr(expr: &[LinslExpr]) -> LinslRes {
             }
         },
         _ => Err(
+            // TODO: Fix pos.
             LinslErr::SyntaxError(
                 "Can only find cdr of lists.".to_string(),
-                vec![1]
+                (0, 0)
             )
         )
     }
