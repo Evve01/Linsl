@@ -357,9 +357,9 @@ fn parse_quote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
 }
 
 /// Rewrites 
-/// 1. `(x_1 ... ,x_n ... x_m) as (list (quote x_1) ... x_n ... (quote x_m)),
+/// 1. `(x_1 ... ,x_n ... x_m) as (append (list (quote x_1)) ... (list x_n) ... (list (quote x_m))),
 /// 2. `,x as x 
-/// 3. `(... ,@x ...) as (list ... (unwrap x) ...).
+/// 3. `(x_1 ... ,@x ... x_n) as (append (list (quote x_1)) ... x ... (list (quote x_m))) 
 /// 4. `x as (quote x)
 fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     // We start by getting the first token:
@@ -379,19 +379,17 @@ fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
         // A comma escapes the quoting, i.e. `,x <=> x, and so we simply continue.
         "," => parse(tokenizer),
         // Here we do mutch the same as for a comma, but we need to add unwrap.
-        ",@" => Ok(
-            LinslExpr::List(
-                vec![
-                LinslExpr::Symbol("unwrap".to_string()),
-                parse(tokenizer)?
-                ]
+        ",@" => Err(
+            LinslErr::SyntaxError(
+                "Cannot have ,@ at top level of `".to_string(),
+                tokenizer.get_pos()
             )
         ),
         // If we encounter an opening parenthesis -- which is what we often do when the user uses
         // quasiquotes -- we parse the list.
         "(" => {
-            if let LinslExpr::List(mut v) = parse_list(tokenizer, parse_quasiquote)? {
-                v.insert(0, LinslExpr::Symbol("list".to_string()));
+            if let LinslExpr::List(mut v) = parse_list(tokenizer, parse_quasiquote_elem_in_list)? {
+                v.insert(0, LinslExpr::Symbol("append".to_string()));
                 Ok(LinslExpr::List(v))
             } else {
                 panic!("parse_list did not return a list when parsing quasi-quote!")
@@ -401,6 +399,47 @@ fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
         // If none of the others have matched, then we have a non-escaped atom; in this case a
         // quasiquote behaves the same as a regular quote.
         _ => parse_quote(tokenizer),
+    }
+}
+
+/// Rewrites `(..) according to the rules described above.
+fn parse_quasiquote_elem_in_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr>{
+    // First, get token as always,
+    let token = match tokenizer.next_token()? {
+        Some(t) => t,
+        None => {
+            return Err(
+                LinslErr::SyntaxError(
+                    "Unexpected EOF.".to_string(),
+                    tokenizer.get_pos()
+                )
+            );
+        }
+    };
+
+    // then check it.
+    match token.as_str() {
+        // ,x => (list x)
+        "," => Ok(
+            LinslExpr::List(vec![
+                LinslExpr::Symbol("list".to_string()),
+                parse(tokenizer)?
+            ])
+        ),
+        // ,@x => x
+        ",@" => Ok(
+            parse(tokenizer)?
+        ),
+        // else: x => (list (quote x))
+        _ => Ok(
+            LinslExpr::List(vec![
+                LinslExpr::Symbol("list".to_string()),
+                LinslExpr::List(vec![
+                    LinslExpr::Symbol("quote".to_string()),
+                    parse(tokenizer)?
+                ])
+            ])
+        ),
     }
 }
 
