@@ -403,7 +403,7 @@ fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
 }
 
 /// Rewrites `(..) according to the rules described above.
-fn parse_quasiquote_elem_in_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr>{
+fn parse_quasiquote_elem_in_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     // First, get token as always,
     let token = match tokenizer.next_token()? {
         Some(t) => t,
