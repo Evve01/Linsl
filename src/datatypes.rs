@@ -1,7 +1,7 @@
 //! The datatypes used throughout the code base.
 use std::{collections::HashMap, fmt};
 
-use crate::{primitives::{add, car, cdr, eq, gr, inv, mul, neg}};
+use crate::primitives::{add, car, cdr, eq, gr, inv, list, mul, neg};
 
 pub type Num = f64;
 pub type PosNum = usize;
@@ -99,6 +99,7 @@ impl LinslEnv<'_> {
         env.insert(">".to_string(), LinslExpr::Primitive(gr));
         env.insert("car".to_string(), LinslExpr::Primitive(car));
         env.insert("cdr".to_string(), LinslExpr::Primitive(cdr));
+        env.insert("list".to_string(), LinslExpr::Primitive(list));
 
         LinslEnv { 
             inner: env,
