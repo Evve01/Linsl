@@ -147,6 +147,12 @@ pub fn inv(expr: &[LinslExpr]) -> LinslRes {
     Ok(LinslExpr::Number(1 as Num/num))
 }
 
+/// Take an arbitrary number of elements, and return a list containing those elements. For example,
+/// (list 1 + 2) becomes (1 + 2), and (list) becomes ().
+pub fn list(exprs: &[LinslExpr]) -> LinslRes {
+    Ok(LinslExpr::List(exprs.to_vec()))
+}
+
 /// Compute the product of a list of (numeric) arguments.
 pub fn mul(exprs: &[LinslExpr]) -> LinslRes {
     let mul = parse_list_of_nums(exprs.into())?.iter().fold(1 as Num, |mul, v| mul * v);
