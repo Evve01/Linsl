@@ -1,7 +1,7 @@
 //! Code for evaluating Linsl expressions.
 
 use crate::datatypes::{LinslEnv, LinslErr, LinslExpr, LinslRes, PosNum};
-use crate::parsing::{handle_result, parse_list_of_symbols};
+use crate::parsing::parse_list_of_symbols;
 
 /// Creates new bindings within the environment specified. For example, given the list of symbols
 /// (a b c) and the list of values (1 2 3) it will bind a to 1, b to 2 and c to 3.
@@ -21,8 +21,9 @@ fn bind<'a>(
         LinslExpr::List(v) => Ok(v.clone()),
         _ => Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 "Expected list of values.".to_string(),
-                vec![2]
+                (0, 0)
             )
         ),
     }?;
@@ -30,10 +31,11 @@ fn bind<'a>(
     if symbs_vec.len() > vals_vec.len() {
         return Err(
             LinslErr::SyntaxError(
+                // TODO: Fox pos
                 format!("Got {} symbols and {} values; cannot have more symbols than values.",
                     symbs_vec.len(),
                     vals_vec.len()),
-                vec![1]
+                (0, 0)
             )
         );
     };
@@ -72,14 +74,15 @@ pub fn evaluate(
 ) -> LinslRes {
     match expr {
         LinslExpr::Bool(_) => Ok(expr.clone()),
-        LinslExpr::List(exprs) => handle_result(evaluate_list(exprs, env), pos),
+        LinslExpr::List(exprs) => evaluate_list(exprs, env),
         LinslExpr::Number(_) => Ok(expr.clone()),
         LinslExpr::Symbol(s) => 
             env_get(s, env)
             .ok_or(
                 LinslErr::SyntaxError(
+                    // TODO: Fix pos
                     format!("Undefined symbol \'{}\'", s),
-                    vec![pos]
+                    (0, 0)
                 )
             )
         ,
@@ -87,8 +90,9 @@ pub fn evaluate(
         // they cause an error.
         _ => Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 format!("Expected list or atom, found \'{}\'", expr), 
-                vec![pos]
+                (0, 0)
             )
         ),
     }
@@ -110,8 +114,9 @@ fn evaluate_built_in_form(
                     Some(e) => Some(Ok(e.clone())),
                     None => Some(
                         Err(LinslErr::SyntaxError(
+                            // TODO: Fix pos
                             "Found no expression to quote.".to_string(), 
-                            vec![0])
+                            (0, 0))
                         )
                     ),
                 }
@@ -128,8 +133,9 @@ fn evaluate_define(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
     if exprs.len() != 2 {
         return Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 format!("define must have two forms, found \'{}\'", exprs.len()),
-                vec![0]
+                (0, 0)
             )
         );
     };
@@ -141,10 +147,11 @@ fn evaluate_define(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
         LinslExpr::Symbol(s) => Ok(s.clone()),
         _ => Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 format!("First define form must be a symbol, found \'{}\'", name_form),
-                vec![1]
-                )
-            ),
+                (0, 0)
+            )
+        ),
     }?;
     let val = evaluate(&val_form[0], 2, env)?;
 
@@ -170,8 +177,9 @@ fn evaluate_if(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
     if exprs.len() != 3 {
         return Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 format!("Expected 3 arguments to if, found {}", exprs.len()),
-                vec![0]
+                (0, 0)
             )
         );
     };
@@ -191,8 +199,9 @@ fn evaluate_if(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
         },
         _ => Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 format!("Test form must evaluate to bool, but evaluated to \'{}\'", test),
-                vec![1]
+                (0, 0)
             )
         ),
     }
@@ -215,8 +224,9 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
         .first()
         .ok_or(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 "Expected non-empty list".to_string(),
-                vec![0]
+                (0, 0)
             ))?;
     let param_forms = &exprs[1..];
 
@@ -230,15 +240,13 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
                                 param_forms,
                                 env)?);
                     let mut new_env = LinslEnv::new(env);
-                    let lambda_env = &mut handle_result(
+                    let mut lambda_env = 
                         bind(
                             &param, 
                             &evals,
                             &mut new_env
-                            ),
-                        1
-                        )?;
-                    evaluate(&body, 2, lambda_env)
+                            )?;
+                    evaluate(&body, 2, &mut lambda_env)
                 },
                 LinslExpr::Primitive(f) => {
                     let params_eval = param_forms
@@ -251,19 +259,19 @@ fn evaluate_list(exprs: &[LinslExpr], env: &mut LinslEnv) -> LinslRes {
                 LinslExpr::Macro(param, body) => {
                     let e = env.clone();
                     let mut new_env = LinslEnv::new(&e);
-                    let macro_env = &mut handle_result(
+                    let mut macro_env =
                         bind(
                             &param,
                             &LinslExpr::List(param_forms.to_vec()),
                             &mut new_env
-                        ),
-                    1)?;
-                    evaluate(&evaluate(&body, 2, macro_env)?, 1, env)
+                        )?;
+                    evaluate(&evaluate(&body, 2, &mut macro_env)?, 1, env)
                 },
                 _ => Err(
                     LinslErr::SyntaxError(
+                        // TODO: Fix pos
                         format!("Expected the head of list to be a primitive, found \'{}\'", primitive),
-                        vec![0]
+                        (0, 0)
                     )
                 )
             }
@@ -285,8 +293,9 @@ fn get_params_and_body(exprs: &[LinslExpr]) -> Result<(LinslExpr, LinslExpr), Li
     if exprs.len() != 2 {
         return Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos
                 format!("Lambda must be given two expressions, found {}", exprs.len()),
-                vec![0]
+                (0, 0)
             )
         );
     };
