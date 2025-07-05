@@ -68,14 +68,14 @@ impl Tokenizer {
     /// function.
     pub fn peek(&mut self) -> Option<String> {
         // If there are parsed tokens left, return a copy of the first one.
-        if self.tokens.len() > 0 {
+        if !self.tokens.is_empty() {
             return Some(self.tokens[0].0.clone());
         };
 
         // If not, attempt to parse more.
-        self.tokenize_line();
+        let _ = self.tokenize_line();
         // If there are new tokens at this point, return a copy of the first one,
-        if self.tokens.len() > 0 {
+        if !self.tokens.is_empty() {
             Some(self.tokens[0].0.clone())
         } else {
             // if not we are out of input.
@@ -85,7 +85,7 @@ impl Tokenizer {
 
     /// Returns the position of the latest retrieved token.
     pub fn get_pos(&self) -> Pos {
-        self.latest_pos.clone()
+        self.latest_pos
     }
 
     /// Regex used for getting tokens.
@@ -202,18 +202,14 @@ pub fn handle_result<T>(res: Result<T, LinslErr>, pos: PosNum) -> Result<T, Lins
 }
 */
 
-pub fn parse(mut tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
+pub fn parse(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     // We begin by retrieving the next token, if any.
-    let token = match tokenizer.next_token() {
-        Ok(Some(t)) => t,
+    let token = match tokenizer.next_token()? {
+        Some(t) => t,
         // If no token exists, something had gone wrong; this function is only called when there
         // needs to be more tokens in order to form a valid expression.
-        Ok(None) => {
+        None => {
             return Err(LinslErr::InternalError("Unexpected EOF.".to_string()));
-        },
-        // If something went wrong in the tokenizer, we simply return that error.
-        Err(e) => {
-            return Err(e);
         },
     };
 
@@ -221,7 +217,7 @@ pub fn parse(mut tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     match token.as_str() {
         // If it is a quote or quasiquote, parse the rest accordingly.
         "'" => parse_quote(tokenizer),
-        "`" => parse_quasiquote(&mut tokenizer),
+        "`" => parse_quasiquote(tokenizer),
         // An opening parenthesis means we start reading a new list.
         "(" => parse_list(tokenizer, parse),
         // If we encounter a closing parenthesis something went wrong.
@@ -281,7 +277,7 @@ fn parse_list(tokenizer: &mut Tokenizer, parser: fn(&mut Tokenizer) -> Result<Li
             let _ = tokenizer.next_token();
             // and stop looping.
             break;
-        };
+        }
 
         // Otherwise, parse the next expresion, and 
         let exp = parser(tokenizer)?;
@@ -295,7 +291,7 @@ fn parse_list(tokenizer: &mut Tokenizer, parser: fn(&mut Tokenizer) -> Result<Li
 
 pub fn parse_list_of_nums(nums: Box<[LinslExpr]>) -> Result<Vec<Num>, LinslErr>{
     (*nums).iter()
-        .map(|e| parse_num(e))
+        .map(parse_num)
         .collect::<Result<Vec<Num>, LinslErr>>()
 }
 
@@ -316,7 +312,7 @@ pub fn parse_list_of_symbols(symbs: &LinslExpr) -> Result<Vec<String>, LinslErr>
             match x {
                 LinslExpr::Symbol(s) => Ok(s.clone()),
                 _ => Err(
-                    // TODO: Fix pos.
+                    // TODO: Fix pos. LinslErr::SyntaxError(
                     LinslErr::SyntaxError(
                         format!("Expected symbol, found \'{}\'", x),
                         (0, 0)
@@ -342,18 +338,12 @@ pub fn parse_num(expr: &LinslExpr) -> Result<Num, LinslErr> {
 
 /// Rewrites 'x -- where x is any Linsl expression -- as (quote x).
 fn parse_quote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
-    // Get the next expression.
-    match parse(tokenizer) {
-        // If this went well, wrap it in a list with head quote,
-        Ok(expr) => Ok(
-            LinslExpr::List(
-                vec![LinslExpr::Symbol("quote".to_string()),
-                    expr]
-            )
-        ),
-        // else, return the error.
-        Err(e) => Err(e),
-    }
+    Ok(
+        LinslExpr::List(
+            vec![LinslExpr::Symbol("quote".to_string()),
+            parse(tokenizer)?]
+        )
+    )
 }
 
 /// Rewrites 
@@ -363,7 +353,7 @@ fn parse_quote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
 /// 4. `x as (quote x)
 fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     // We start by getting the first token:
-    let token = match tokenizer.next_token()? {
+    let token = match tokenizer.peek() {
         // Take the token if there was one, else return an error.
         Some(t) => t,
         None => return Err(
@@ -377,7 +367,10 @@ fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     // We can now inspect the token.
     match token.as_str() {
         // A comma escapes the quoting, i.e. `,x <=> x, and so we simply continue.
-        "," => parse(tokenizer),
+        "," => {
+            let _ = tokenizer.next_token();
+            parse(tokenizer)
+        },
         // Here we do mutch the same as for a comma, but we need to add unwrap.
         ",@" => Err(
             LinslErr::SyntaxError(
@@ -388,13 +381,14 @@ fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
         // If we encounter an opening parenthesis -- which is what we often do when the user uses
         // quasiquotes -- we parse the list.
         "(" => {
+            let _ = tokenizer.next_token();
             if let LinslExpr::List(mut v) = parse_list(tokenizer, parse_quasiquote_elem_in_list)? {
                 v.insert(0, LinslExpr::Symbol("append".to_string()));
                 Ok(LinslExpr::List(v))
             } else {
                 panic!("parse_list did not return a list when parsing quasi-quote!")
             }
-        }
+        },
         
         // If none of the others have matched, then we have a non-escaped atom; in this case a
         // quasiquote behaves the same as a regular quote.
@@ -405,7 +399,7 @@ fn parse_quasiquote(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
 /// Rewrites `(..) according to the rules described above.
 fn parse_quasiquote_elem_in_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr, LinslErr> {
     // First, get token as always,
-    let token = match tokenizer.next_token()? {
+    let token = match tokenizer.peek() {
         Some(t) => t,
         None => {
             return Err(
@@ -416,20 +410,25 @@ fn parse_quasiquote_elem_in_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr,
             );
         }
     };
-
     // then check it.
     match token.as_str() {
         // ,x => (list x)
-        "," => Ok(
-            LinslExpr::List(vec![
-                LinslExpr::Symbol("list".to_string()),
-                parse(tokenizer)?
-            ])
-        ),
+        "," => {
+            let _ = tokenizer.next_token();
+            Ok(
+                LinslExpr::List(vec![
+                    LinslExpr::Symbol("list".to_string()),
+                    parse(tokenizer)?
+                ])
+            )
+        },
         // ,@x => x
-        ",@" => Ok(
-            parse(tokenizer)?
-        ),
+        ",@" => {
+            let _ = tokenizer.next_token();
+            Ok(
+                parse(tokenizer)?
+            )
+        },
         // else: x => (list (quote x))
         _ => Ok(
             LinslExpr::List(vec![
@@ -449,7 +448,7 @@ mod test {
 
     fn setup(input: Box<dyn BufRead>) -> Tokenizer {
         let mut vec: VecDeque<Box<dyn BufRead>> = VecDeque::new();
-        vec.push_front(Box::new(input));
+        vec.push_front(input);
         Tokenizer::new(vec).unwrap()
     }
 
@@ -518,5 +517,166 @@ mod test {
             let token = tokenizer.next_token().unwrap().unwrap();
             assert_eq!(string[n], token)
         });
+    }
+
+    #[test]
+    fn parse_num() {
+        let s = "1\n";
+        let mut tokenizer = setup(Box::new(s.as_bytes()));
+
+        let pass = match parse(&mut tokenizer).unwrap() {
+            LinslExpr::Number(v) => v == 1.0,
+            _ => false,
+        };
+
+        assert!(pass);
+    }
+
+    #[test]
+    fn parse_symbol() {
+        let s = "+\n";
+        let mut tokenizer = setup(Box::new(s.as_bytes()));
+
+        let pass = match parse(&mut tokenizer).unwrap() {
+            LinslExpr::Symbol(val) => val == "+",
+            _ => false,
+        };
+
+        assert!(pass);
+    }
+
+    #[test]
+    fn parse_list() {
+        let s = "(1 2 3)\n";
+        let mut tokenizer = setup(Box::new(s.as_bytes()));
+
+        let nums = match parse(&mut tokenizer).unwrap() {
+            LinslExpr::List(linsl_exprs) => linsl_exprs,
+            _ => panic!(),
+        };
+
+        assert_eq!(3, nums.len());
+        for n in 1..3 {
+            match nums.clone()[n - 1] {
+                LinslExpr::Number(v) => assert_eq!(v.clone(), n as f64),
+                _ => panic!(),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_quote() {
+        let s = "'x\n";
+        let mut tokenizer = setup(Box::new(s.as_bytes()));
+
+        let parsed = match parse(&mut tokenizer).unwrap() {
+            LinslExpr::List(linsl_exprs) => linsl_exprs,
+            _ => panic!(),
+        };
+
+        assert_eq!(2, parsed.len());
+        match &parsed[0] {
+            LinslExpr::Symbol(s) => assert_eq!("quote", s),
+            _ => panic!()
+        };
+        match &parsed[1] {
+            LinslExpr::Symbol(s) => assert_eq!("x", s),
+            _ => panic!(),
+        };
+    }
+
+    #[test]
+    fn parse_quasiquote_symbol_no_escape() {
+        let s = "`x\n";
+        let mut tokenizer = setup(Box::new(s.as_bytes()));
+
+        let parsed = match parse(&mut tokenizer).unwrap() {
+            LinslExpr::List(linsl_exprs) => linsl_exprs,
+            _ => panic!(),
+        };
+
+        assert_eq!(2, parsed.len());
+        match &parsed[0] {
+            LinslExpr::Symbol(s) => assert_eq!("quote", s),
+            _ => panic!(),
+        };
+        match &parsed[1] {
+            LinslExpr::Symbol(s) => assert_eq!("x", s),
+            _ => panic!(),
+        };
+    }
+
+    #[test]
+    fn parse_quasiquote_symbol_escape() {
+        let s = "`,x\n";
+        let mut tokenizer = setup(Box::new(s.as_bytes()));
+
+        match parse(&mut tokenizer).unwrap() {
+            LinslExpr::Symbol(s) => assert_eq!("x", s),
+            _ => panic!(),
+        };
+    }
+
+    #[test]
+    fn parse_quasiquote_list_no_escape() {
+        let s = "`(1 2)\n";
+        let mut tokenizer = setup(Box::new(s.as_bytes()));
+        let parsed = match parse(&mut tokenizer).unwrap() {
+            LinslExpr::List(linsl_exprs) => linsl_exprs,
+            _ => panic!(),
+        };
+
+        assert_eq!(3, parsed.len());
+            // (append (list (quote 1)) (list (quote 2)))
+        match &parsed[0] {
+            LinslExpr::Symbol(s) => assert_eq!("append", s),
+            _ => panic!()
+        };
+
+        if let LinslExpr::List(exprs0) = &parsed[1] {
+            assert_eq!(2, exprs0.len());
+            match &exprs0[0] {
+                LinslExpr::Symbol(s) => assert_eq!("list", s),
+                _ => panic!(),
+            };
+            if let LinslExpr::List(exprs1) = &exprs0[1] {
+                assert_eq!(2, exprs1.len());
+                match &exprs1[0] {
+                    LinslExpr::Symbol(s) => assert_eq!("quote", s),
+                    _ => panic!(),
+                };
+                match &exprs1[1] {
+                    LinslExpr::Number(v) => assert_eq!(1.0, *v),
+                    _ => panic!(),
+                };
+            } else {
+                panic!()
+            };
+        } else {
+            panic!();
+        };
+
+        if let LinslExpr::List(exprs2) = &parsed[2] {
+            assert_eq!(2, exprs2.len());
+            match &exprs2[0] {
+                LinslExpr::Symbol(s) => assert_eq!("list", s),
+                _ => panic!(),
+            }
+            if let LinslExpr::List(exprs3) = &exprs2[1] {
+                assert_eq!(2, exprs3.len());
+                match &exprs3[0] {
+                    LinslExpr::Symbol(s) => assert_eq!("quote", s),
+                    _ => panic!(),
+                };
+                match &exprs3[1] {
+                    LinslExpr::Number(v) => assert_eq!(2.0, *v),
+                    _ => panic!(),
+                };
+            } else {
+                panic!()
+            };
+        } else {
+            panic!();
+        };
     }
 }
