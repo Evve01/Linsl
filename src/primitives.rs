@@ -228,8 +228,9 @@ pub fn is_nil(expr: &[LinslExpr]) -> LinslRes {
     if expr.len() != 1 {
         return Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos.
                 format!("Expected 1 argument, found {}", expr.len()),
-                vec![1]
+                (0, 0)
             )
         );
     };
@@ -248,8 +249,9 @@ pub fn eq_types(exprs: &[LinslExpr]) -> LinslRes {
     if exprs.len() != 2 {
         return Err(
             LinslErr::SyntaxError(
+                // TODO: Fix pos.
                 format!("Expected 2 arguments, found {}", exprs.len()),
-                vec![1]
+                (0, 0)
             )
         );
     };
