@@ -104,6 +104,19 @@ empty; otherwise, it returns `#f`.
 `eqt?` takes two arguments, and checks if they are of the same type. If they
 are, returns `#t`, if not returns `#f`.
 
+#### The `list`-primitive
+
+`list` takes an arbitrary number of arguments and returns a list containing the
+elements. For example, `(list 1)` evaluates to `(1)`, `(list 1 2 3)`
+evaluates to `(1 2 3)` and `(list)` evaluates to `()`.
+
+#### The `append`-primitive
+`append` takes any number of lists greater than one and combines them in order.
+For example, `(append '(1) '(2))` evaluates to `(1 2)`, `(append '(1 2 3)
+'(4))` evaluates to `(1 2 3 4)` and `(append '(1 2 3))` evaluates to `(1 2 3)`.
+
+All the elements must be lists, otherwise an error will be raised.
+
 ### Special Forms
 
 Special forms act like primitives or functions, but differ in that they change
@@ -155,6 +168,22 @@ This means that if some lambda `(lambda (x) ...)` is applied to e.g. `(+ 1 2)`,
 
 `quote` takes one expression, and returns it without evaluation. This can be
 used to, for example, create lists; `(quote (1 2))` evaluates to `(1 2)`.
+
+`quote` is very convenient, and so there exists a shorthand for `(quote x)`:
+`'x`. These two expressions are completely equivalent, in fact the interpreter
+will convert `'x` into `(quote x)` before evaluation.
+
+Another shorthand exists to allow parts of an expression to be quoted, while
+others are not: the \` (quasi-quote). This works exactly the same as `quote`,
+with two notable exceptions:
+
+1. Any expression preceded by a comma will be evaluated, so e.g. `` `(1 2
+   ,x)`` evaluates to `(1 2 3)`, if `x` is bound to `3`.
+
+2. Any expression preceded by `,@` will be assumed to be a list, and have its
+   elements inserted at that position. For example, if `x` is bound to `'(1 2
+   3)`, then `` `(,x)`` will evaluate to `((1 2 3))`, but `` `(,@x)`` will
+   evaluate to `(1 2 3)`.
 
 # Acknowledgements
 
