@@ -127,6 +127,14 @@ impl Tokenizer {
                     // Then increment the column number so it points to after the read token.
                     col += result.len() + 1;
                 }
+                if result.chars().nth(0) == Some(';') && self.tokens.is_empty() {
+                    // If we have a comment, the the rest of the line should have been captured, and
+                    // therefore nothing should be left.
+                    assert!(unmatched.is_empty());
+                    // Furthermore, if tokens is empty then this entire line was empty, and so we
+                    // need to tokenize another line.
+                    self.tokenize_line()?;
+                }
                 rest = unmatched;
             };
 
@@ -428,6 +436,20 @@ fn parse_quasiquote_elem_in_list(tokenizer: &mut Tokenizer) -> Result<LinslExpr,
             Ok(
                 parse(tokenizer)?
             )
+        },
+        "(" => {
+            let _ = tokenizer.next_token();
+             if let LinslExpr::List(mut v) = parse_list(tokenizer, parse_quasiquote_elem_in_list)? {
+                v.insert(0, LinslExpr::Symbol("append".to_string()));
+                Ok(
+                    LinslExpr::List(vec![
+                        LinslExpr::Symbol("list".to_string()),
+                        LinslExpr::List(v)
+                    ])
+                )
+            } else {
+                panic!("parse_list did not return a list when parsing quasi-quote!")
+            }
         },
         // else: x => (list (quote x))
         _ => Ok(
