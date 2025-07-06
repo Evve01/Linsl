@@ -1,14 +1,13 @@
 //! The datatypes used throughout the code base.
-
 use std::{collections::HashMap, fmt};
 
-use crate::primitives::{add, car, cdr, eq, eq_types, gr, inv, is_nil, mul, neg};
+use crate::primitives::{add, append, car, cdr, eq, eq_types, gr, inv, is_nil, list, mul, neg};
 
 pub type Num = f64;
 pub type PosNum = usize;
 /// Positions of expressions are tracked and used only to specify where a syntax error has
 /// occurred.
-pub type Pos = Vec<PosNum>;
+pub type Pos = (PosNum, PosNum);
 
 pub type LinslRes = Result<LinslExpr, LinslErr>;
 
@@ -21,13 +20,13 @@ pub enum LinslExpr {
     Closure(Box<LinslExpr>, Box<LinslExpr>),
     List(Vec<LinslExpr>),
     Number(Num),
+    /// A macro, which is similar to a closure but does not evaluate its parameters.
+    Macro(Box<LinslExpr>, Box<LinslExpr>),
     /// A built in transformation of expressions. These have deliberately been kept as few as
     /// possible; there are just enough of them to allow other functions that are desirable to be
     /// defined in Linsl.
     Primitive(fn(&[LinslExpr]) -> LinslRes),
     Symbol(String),
-    /// A macro, which is similar to a closure but does not evaluate its parameters.
-    Macro(Box<LinslExpr>, Box<LinslExpr>),
 }
 
 impl fmt::Display for LinslExpr {
@@ -69,13 +68,7 @@ impl fmt::Display for LinslErr {
         let str = match self {
             LinslErr::InternalError(s) => s.clone(),
             LinslErr::SyntaxError(s, p) => {
-                let mut poss: Vec<String> = p.iter()
-                    .map(|c| c.to_string())
-                    .collect();
-                poss.pop();
-                poss.reverse();
-                let vec = format!("({})", poss.join(", "));
-                format!("Syntax error at {}: {}", vec, s)
+                format!("Syntax error at ({}, {}): {}", p.0, p.1, s)
             },
             LinslErr::UnbalancedParens(v1, v2) => format!("Unbalanced Parenthesis ({}, {})", v1, v2),
         };
@@ -84,8 +77,7 @@ impl fmt::Display for LinslErr {
     }
 }
 
-/// The bindings between symbol names and code. The inner scope is the local scope, enabling scoped
-/// variables. This enables closures.
+/// The bindings between symbol names and code. The inner scope is the local scope, enabling scoped variables. This enables closures.
 #[derive(Debug, Clone)]
 pub struct LinslEnv<'a> {
     /// The current local scope.
@@ -109,6 +101,9 @@ impl LinslEnv<'_> {
         env.insert("cdr".to_string(), LinslExpr::Primitive(cdr));
         env.insert("empty?".to_string(), LinslExpr::Primitive(is_nil));
         env.insert("eqt?".to_string(), LinslExpr::Primitive(eq_types));
+        env.insert("list".to_string(), LinslExpr::Primitive(list));
+        env.insert("append".to_string(), LinslExpr::Primitive(append));
+
         LinslEnv { 
             inner: env,
             outer: None,
