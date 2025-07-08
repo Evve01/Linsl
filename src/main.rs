@@ -1,6 +1,9 @@
 //! A simple interpreter for a lisp/scheme like language
 
-use std::{collections::VecDeque, env::args, fs::{self, File}, io::{self, BufRead, BufReader, Result, Write}};
+use std::collections::VecDeque;
+use std::env::args;
+use std::fs::{self, File};
+use std::io::{self, BufRead, BufReader, Cursor, Result};
 
 mod datatypes;
 mod evaluation;
@@ -10,10 +13,10 @@ mod parsing;
 use evaluation::evaluate;
 use parsing::{parse,  Tokenizer};
 use datatypes::{LinslEnv, LinslErr, LinslExpr, LinslRes};
+use rustyline::DefaultEditor;
 
 fn parse_eval(tokenizer: &mut Tokenizer, env: &mut LinslEnv) -> LinslRes {
     let parse_res = parse(tokenizer)?;
-
     let res = evaluate(&parse_res, env)?;
     Ok(res)
 }
@@ -56,18 +59,33 @@ fn get_input() -> Result<VecDeque<Box<dyn BufRead>>> {
 
 fn main() {
     let env = &mut LinslEnv::default();
-    let mut tkzr = Tokenizer::new(get_input().unwrap()).unwrap();
+    let mut tkzr = Tokenizer::new(vec![].into()).unwrap();
+    let mut editor = DefaultEditor::new().unwrap();
 
     loop {
-        print!("Linsl> ");
-        io::stdout().flush().expect("Could not print!");
-        
+        let readline = editor.readline("Linsl> ");
+        match readline {
+            Ok(line) => {
+                if line.is_empty() {
+                    continue;
+                }
+                if editor.add_history_entry(&line).is_err() {
+                    panic!("Could not add to history!");
+                };
+                let line1 = line + "\n";
+                tkzr.add_input(Box::new(Cursor::new(line1)));
+            },
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            },
+        }
+
         match parse_eval(&mut tkzr, env) {
             Ok(res) => println!("{}", res),
             Err(e) => println!("{}", e),
         }
     }
-    
 }
 
 #[cfg(test)]
